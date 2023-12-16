@@ -1,8 +1,9 @@
-# `Rex-lsp`
-`Rex-lsp` is the Language Server Protocol server for `Rex`
+# `rexls`
+`rexls` is the Language Server Protocol server for `Rex`
 
-# ! In Early Development
-`Rex-lsp` is currently in the design stage, it has not yet been implemented.
+[![License: APACHE](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) |
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-# License
-`Rex` is distributed under the terms of both the MIT license and the Apache License (Version 2.0).
+[Repositories](https://www.github.com/rexlang/rex)
+
+[Read the docs](https://www.rexlang.org)
