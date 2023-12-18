@@ -1,5 +1,5 @@
 [package]
-name = "iodo-ls"
+name = "iodine-ls"
 version = "0.0.1"
 edition = "2021"
 
