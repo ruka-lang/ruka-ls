@@ -3,6 +3,16 @@
 version = 3
 
 [[package]]
+name = "amulet-ls"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "clap",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "anstream"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -101,16 +111,6 @@ name = "colorchoice"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
-
-[[package]]
-name = "ghoose-ls"
-version = "0.0.1"
-dependencies = [
- "anyhow",
- "clap",
- "serde",
- "serde_json",
-]
 
 [[package]]
 name = "heck"
