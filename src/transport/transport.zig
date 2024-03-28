@@ -5,6 +5,8 @@ const json = std.json;
 
 in: std.io.BufferedReader(4096, std.io.AnyReader),
 out: std.io.AnyWriter,
+in_lock: std.Thread.Mutex = .{},
+out_lock: std.Thread.Mutex = .{},
 
 const Transport = @This();
 
@@ -63,12 +65,19 @@ pub fn sendJsonMesage(_: *Transport, _: std.mem.Allocator, _: anytype) !void {
 /// Returns the json content from the request sent to the `Transport`'s reader.
 /// Caller is responsible for the returned memory when successful
 pub fn readJsonMessage(self: *Transport, allocator: std.mem.Allocator) ![]u8 {
-    const reader = self.in.reader();
-    const header = try Header.parse(allocator, reader);
+    const content = blk: {
+        self.in_lock.lock();
+        defer self.in_lock.unlock();
 
-    const content = try allocator.alloc(u8, header.length);
-    errdefer allocator.free(content);
-    try reader.readNoEof(content);
+        const reader = self.in.reader();
+        const header = try Header.parse(allocator, reader);
+
+        const content = try allocator.alloc(u8, header.length);
+        errdefer allocator.free(content);
+        try reader.readNoEof(content);
+
+        break :blk content;
+    };
 
     return content;
 }

@@ -6,18 +6,33 @@ const std = @import("std");
 allocator: std.mem.Allocator,
 transport: *Transport,
 status: Status = .uninitialized,
-pool: std.Thread.Pool,
+
+thread_pool: std.Thread.Pool,
 wait_group: std.Thread.WaitGroup,
+
+job_queue: std.fifo.LinearFifo(Job, .Dynamic),
+job_queue_lock: std.Thread.Mutex = .{},
 
 const Server = @This();
 
 const log = std.log.scoped(.server);
 
 pub const Message = struct {
-    method: []const u8,
+    method: enum {
+        initialize,
+        shutdown,
+        unknown
+    },
 
-    pub fn deinit(self: @This(), allocator: std.mem.Allocator) void {
+    pub fn deinit(self: Message, allocator: std.mem.Allocator) void {
         allocator.free(self.method);
+    }
+
+    pub fn isBlocking(self: Message) bool {
+        switch (self.method) {
+            .initialize, .shutdown => return true,
+            else => return false
+        }
     }
 };
 
@@ -36,16 +51,39 @@ const Status = enum {
     exiting_failure
 };
 
+const Job = union(enum) {
+    incoming_message: std.json.Parsed(Message),
+
+    fn deinit(self: Job) void {
+        switch (self) {
+            .incoming_message => |parsed_message| parsed_message.deinit(),
+        }
+    }
+
+    const SynchronizationMode = enum {
+        exclusive,
+        shared,
+        atomic
+    };
+
+    fn syncMode(self: Job) SynchronizationMode {
+        return switch (self) {
+            .incoming_message => |message| if (message.value.isBlocking()) .exclusive else .shared,
+        };
+    }
+};
+
 pub fn init(allocator: std.mem.Allocator, transport: *Transport) !*Server {
     const server = try allocator.create(Server);
     server.* =  Server{
         .allocator = allocator,
         .transport = transport,
-        .pool = undefined,
-        .wait_group = .{}
+        .thread_pool = undefined,
+        .wait_group = .{},
+        .job_queue = std.fifo.LinearFifo(Job, .Dynamic).init(allocator)
     };
 
-    try server.pool.init(.{
+    try server.thread_pool.init(.{
         .allocator = allocator,
         .n_jobs = 4
     });
@@ -55,7 +93,10 @@ pub fn init(allocator: std.mem.Allocator, transport: *Transport) !*Server {
 
 pub fn deinit(self: *Server) void {
     self.wait_group.wait();
-    self.pool.deinit();
+    self.thread_pool.deinit();
+    while (self.job_queue.readItem()) |job| job.deinit();
+    self.job_queue.deinit();
+    self.job_queue.deinit();
     self.allocator.destroy(self);
 }
 
@@ -66,48 +107,91 @@ pub fn keepRunning(self: *Server) bool {
     }
 }
 
+pub fn waitAndWork(self: *Server) void {
+    self.thread_pool.waitAndWork(&self.wait_group);
+    self.wait_group.reset();
+}
+
 pub fn loop(self: *Server) !void {
     while (self.keepRunning()) { 
-        const message = try self.decodeMessage();
-        defer message.deinit(self.allocator);
-        
-        log.info("{s}", .{message.method});
+        const json_message = try self.transport.readJsonMessage(self.allocator);
+        defer self.allocator.free(json_message);
+        try self.sendJsonMessage(json_message);
+
+        while (self.job_queue.readItem()) |job| {
+            switch (job.syncMode()) {
+                .exclusive => {
+                    self.waitAndWork();
+                    self.processJob(job, null);
+                },
+                .shared => {
+                    self.wait_group.start();
+                    errdefer job.deinit();
+                    try self.thread_pool.spawn(processJob, .{self, job, &self.wait_group});
+                },
+                .atomic => {
+                    errdefer job.deinit();
+                    try self.thread_pool.spawn(processJob, .{self, job, null});
+                }
+            }
+        }
     }
 }
 
-fn decodeMessage(self: *Server) !Message {
-    var message: Message = undefined;
+fn sendJsonMessage(self: *Server, json_message: []u8) !void {
+    try self.job_queue.ensureUnusedCapacity(1);
 
-    const json_message = try self.transport.readJsonMessage(self.allocator);
-    defer self.allocator.free(json_message);
-
-    const parsed = try std.json.parseFromSlice(Message, self.allocator, json_message, 
-        .{.ignore_unknown_fields = true, .max_value_len = null});
-    defer parsed.deinit();
-
-    message.method = try self.allocator.dupe(u8, parsed.value.method);
-
-    return message;
-}
-
-test "decode method" {
-    const buf = "Content-Length: 27\r\n\r\n{\"method\":\"initialization\"}";
-    var source = std.io.fixedBufferStream(buf);
-
-    const expected = Message{
-        .method = "initialization"
+    const parsed = std.json.parseFromSlice(Message, self.allocator, json_message, 
+        .{.ignore_unknown_fields = true, .max_value_len = null}) 
+    catch |err| {
+        log.err("{any}", .{err});
+        return err;
     };
 
-    const stdin = source.reader().any();
-    const stdout = std.io.getStdOut().writer().any();
-    const allocator = std.testing.allocator;
-
-    var t = Transport.init(stdin, stdout);
-    var server = try Server.init(allocator, &t);
-    defer server.deinit();
-
-    const actual = try server.decodeMessage();
-    defer actual.deinit(allocator);
-
-    try std.testing.expect(std.mem.eql(u8, expected.method, actual.method));
+    self.job_queue.writeItemAssumeCapacity(.{ .incoming_message = parsed });
 }
+
+fn processJob(self: *Server, job: Job, wait_group: ?*std.Thread.WaitGroup) void {
+    defer if (wait_group != null) wait_group.?.finish();
+
+    defer job.deinit();
+
+    switch (job) {
+        .incoming_message => |parsed_message| {
+            switch (parsed_message.value.method) {
+                .initialize => {
+                    self.status = .initializing;
+                    return log.info("initialize", .{});
+                },
+                .shutdown => {
+                    return log.info("shutdown", .{});
+                },
+                .unknown => { 
+                    return log.err("Unknown request", .{});
+                }
+            }
+        }
+    }
+}
+
+//test "decode method" {
+//    const buf = "Content-Length: 27\r\n\r\n{\"method\":\"initialization\"}";
+//    var source = std.io.fixedBufferStream(buf);
+//
+//    const expected = Message{
+//        .method = "initialization"
+//    };
+//
+//    const stdin = source.reader().any();
+//    const stdout = std.io.getStdOut().writer().any();
+//    const allocator = std.testing.allocator;
+//
+//    var t = Transport.init(stdin, stdout);
+//    var server = try Server.init(allocator, &t);
+//    defer server.deinit();
+//
+//    const actual = try server.decodeMessage();
+//    defer actual.deinit(allocator);
+//
+//    try std.testing.expect(std.mem.eql(u8, expected.method, actual.method));
+//}
