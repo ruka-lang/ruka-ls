@@ -34,6 +34,10 @@ pub const Message = struct {
             else => return false
         }
     }
+
+    // can add custom json parsing by adding jsonParse and jsonParseFromValue methods
+    // jsonParse(allocator: std.mem.Allocator, source: anytype, options: std.json.ParseOptions) std.json.ParseError(@TypeOf(source.*))!Message
+    // jsonParseFromValue(allocator: std.mem.Allocator, source: std.json.Value, options: std.json.ParseOptions) !Message
 };
 
 const Status = enum {
