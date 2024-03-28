@@ -1,4 +1,4 @@
-function RukaLsStart()
+function RukalsStart()
     local client = vim.lsp.start_client {
         name = "ruka-ls",
         cmd = { "/home/dwclake/ruka-lang/ruka-ls/zig-out/bin/ruka-ls" },
