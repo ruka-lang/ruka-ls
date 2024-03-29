@@ -24,8 +24,8 @@ pub const Message = struct {
         unknown
     },
 
-    pub fn deinit(self: Message, allocator: std.mem.Allocator) void {
-        allocator.free(self.method);
+    pub fn deinit(_: Message, _: std.mem.Allocator) void {
+        //allocator.free(self.method);
     }
 
     pub fn isBlocking(self: Message) bool {
@@ -79,6 +79,8 @@ const Job = union(enum) {
 
 pub fn init(allocator: std.mem.Allocator, transport: *Transport) !*Server {
     const server = try allocator.create(Server);
+    errdefer server.deinit();
+
     server.* =  Server{
         .allocator = allocator,
         .transport = transport,
@@ -100,7 +102,6 @@ pub fn deinit(self: *Server) void {
     self.thread_pool.deinit();
     while (self.job_queue.readItem()) |job| job.deinit();
     self.job_queue.deinit();
-    self.job_queue.deinit();
     self.allocator.destroy(self);
 }
 
@@ -114,6 +115,11 @@ pub fn keepRunning(self: *Server) bool {
 pub fn waitAndWork(self: *Server) void {
     self.thread_pool.waitAndWork(&self.wait_group);
     self.wait_group.reset();
+}
+
+fn shutdown(self: *Server) void {
+    self.status = .exiting_success;
+    log.info("shutdown successfully", .{});
 }
 
 pub fn loop(self: *Server) !void {
@@ -148,7 +154,7 @@ fn sendJsonMessage(self: *Server, json_message: []u8) !void {
     const parsed = std.json.parseFromSlice(Message, self.allocator, json_message, 
         .{.ignore_unknown_fields = true, .max_value_len = null}) 
     catch |err| {
-        log.err("{any}", .{err});
+        log.err("json parse error: {any}", .{err});
         return err;
     };
 
@@ -168,7 +174,9 @@ fn processJob(self: *Server, job: Job, wait_group: ?*std.Thread.WaitGroup) void 
                     return log.info("initialize", .{});
                 },
                 .shutdown => {
-                    return log.info("shutdown", .{});
+                    self.status = .shutdown;
+                    log.info("shutting down", .{});
+                    return self.shutdown();
                 },
                 .unknown => { 
                     return log.err("Unknown request", .{});
