@@ -2,6 +2,8 @@ const std = @import("std");
 
 pub const Transport = @import("transport/transport.zig");
 pub const Server = @import("server/server.zig");
+pub const Message = @import("server/message.zig");
+pub const types = @import("types.zig");
 
 var time: i64 = undefined;
 

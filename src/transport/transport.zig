@@ -58,8 +58,17 @@ pub fn encodeMessage(_: *const Transport, allocator: std.mem.Allocator, msg: any
     return result;
 }
 
-pub fn sendJsonMesage(_: *Transport, _: std.mem.Allocator, _: anytype) !void {
+pub fn writeJsonMessage(self: *Transport, allocator: std.mem.Allocator, msg: []const u8) !void {
+    const prefix = try std.fmt.allocPrint(allocator, "Content-Length: {d}\r\n\r\n", .{msg.len});
+    defer allocator.free(prefix);
 
+    {
+        self.out_lock.lock();
+        defer self.out_lock.unlock();
+
+        try self.out.writeAll(prefix);
+        try self.out.writeAll(msg);
+    }
 }
 
 /// Returns the json content from the request sent to the `Transport`'s reader.

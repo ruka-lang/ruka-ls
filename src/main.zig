@@ -4,6 +4,8 @@ const Server = ruka_ls.Server;
 
 const std = @import("std");
 
+const log = std.log.scoped(.exe);
+
 pub const std_options = .{
     .log_level = switch (@import("builtin").mode) {
         .Debug => .debug,
@@ -20,12 +22,12 @@ pub fn main() !void {
 
     try ruka_ls.setup_logs(allocator);
 
-    std.log.scoped(.exe).info("I'm alive", .{});
+    log.info("I'm alive", .{});
 
     var transport = Transport.init(stdin, stdout);
     var server = try Server.init(allocator, &transport);
     defer server.deinit();
 
     try server.loop();
+    log.info("shutdown", .{});
 }
-

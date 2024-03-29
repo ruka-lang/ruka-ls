@@ -1,5 +1,7 @@
 const ruka_ls = @import("../root.zig");
 const Transport = ruka_ls.Transport;
+const Message = ruka_ls.Message;
+const types = ruka_ls.types;
 
 const std = @import("std");
 
@@ -16,29 +18,6 @@ job_queue_lock: std.Thread.Mutex = .{},
 const Server = @This();
 
 const log = std.log.scoped(.server);
-
-pub const Message = struct {
-    method: enum {
-        initialize,
-        shutdown,
-        unknown
-    },
-
-    pub fn deinit(_: Message, _: std.mem.Allocator) void {
-        //allocator.free(self.method);
-    }
-
-    pub fn isBlocking(self: Message) bool {
-        switch (self.method) {
-            .initialize, .shutdown => return true,
-            else => return false
-        }
-    }
-
-    // can add custom json parsing by adding jsonParse and jsonParseFromValue methods
-    // jsonParse(allocator: std.mem.Allocator, source: anytype, options: std.json.ParseOptions) std.json.ParseError(@TypeOf(source.*))!Message
-    // jsonParseFromValue(allocator: std.mem.Allocator, source: std.json.Value, options: std.json.ParseOptions) !Message
-};
 
 const Status = enum {
     /// The server has not received a `initialize` request
@@ -117,11 +96,6 @@ pub fn waitAndWork(self: *Server) void {
     self.wait_group.reset();
 }
 
-fn shutdown(self: *Server) void {
-    self.status = .exiting_success;
-    log.info("shutdown successfully", .{});
-}
-
 pub fn loop(self: *Server) !void {
     while (self.keepRunning()) { 
         const json_message = try self.transport.readJsonMessage(self.allocator);
@@ -151,39 +125,111 @@ pub fn loop(self: *Server) !void {
 fn sendJsonMessage(self: *Server, json_message: []u8) !void {
     try self.job_queue.ensureUnusedCapacity(1);
 
-    const parsed = std.json.parseFromSlice(Message, self.allocator, json_message, 
-        .{.ignore_unknown_fields = true, .max_value_len = null}) 
-    catch |err| {
-        log.err("json parse error: {any}", .{err});
-        return err;
-    };
+    const parsed = std.json.parseFromSlice(
+        Message, 
+        self.allocator, 
+        json_message, 
+        .{.ignore_unknown_fields = true, .max_value_len = null}
+        ) catch return error.ParseError;
 
     self.job_queue.writeItemAssumeCapacity(.{ .incoming_message = parsed });
 }
 
+fn sendToClientResponse(self: *Server, id: types.RequestId, response: anytype) !void {
+    return try self.sendToClientInternal(id, response);
+}
+
+fn sendToClientInternal(self: *Server, id: types.RequestId, content: anytype) !void {
+    var buffer = std.ArrayList(u8).init(self.allocator);
+    defer buffer.deinit();
+
+    var writer = buffer.writer();
+    try writer.writeAll("{\"jsonrpc\":\"2.0\"");
+    try writer.writeAll(",\"id\":");
+    try std.json.stringify(id, .{}, writer);
+    try writer.writeAll(",\"result\":");
+    try std.json.stringify(content, .{}, writer);
+
+    try writer.writeByte('}');
+
+    self.transport.writeJsonMessage(self.allocator, buffer.items) catch |err| {
+        log.err("failed to write response: {}", .{err});
+    };
+}
+
+fn sendRequestSync(self: *Server, allocator: std.mem.Allocator, message: Message) !void {
+    return switch (message.request.?.params) {
+        .initialize => |params| {
+            const result = try self.initializeHandler(allocator, params);
+            return try self.sendToClientResponse(message.request.?.id, result);
+        },
+        .shutdown => return try self.shutdownHandler(),
+        .unknown => |msg| { 
+            log.err("Unknown request: {s}", .{msg});
+        }
+    };
+}
+
+fn processMessage(self: *Server, allocator: std.mem.Allocator, message: Message) !void {
+    @setEvalBranchQuota(5_000);
+    switch (message.tag) {
+        .request => {
+            switch (message.request.?.params) {
+                inline else => {
+                    try self.sendRequestSync(allocator, message);
+                },
+                .unknown => return
+            }
+        },
+        .notification => {
+            return;
+        },
+        .response => {
+            return;
+        }
+    }
+}
+
 fn processJob(self: *Server, job: Job, wait_group: ?*std.Thread.WaitGroup) void {
     defer if (wait_group != null) wait_group.?.finish();
-
     defer job.deinit();
+
+    var arena = std.heap.ArenaAllocator.init(self.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
 
     switch (job) {
         .incoming_message => |parsed_message| {
-            switch (parsed_message.value.method) {
-                .initialize => {
-                    self.status = .initializing;
-                    return log.info("initialize", .{});
-                },
-                .shutdown => {
-                    self.status = .shutdown;
-                    log.info("shutting down", .{});
-                    return self.shutdown();
-                },
-                .unknown => { 
-                    return log.err("Unknown request", .{});
-                }
-            }
+            self.processMessage(allocator, parsed_message.value) catch |err| log.err("{any}", .{err});
         }
     }
+}
+
+fn initializeHandler(self: *Server, _: std.mem.Allocator, _: anytype) !types.InitializeResult {
+    self.status = .initializing;
+    log.info("initialize", .{});
+
+    defer self.status = .initialized;
+
+    const result = types.InitializeResult{
+        .serverInfo = .{
+            .name = "ruka-ls",
+            .version = "0.0.0"
+        },
+        .capabilities = .{}
+    };
+
+    return result;
+}
+
+fn shutdownHandler(self: *Server) !void {
+    defer self.status = .shutdown;
+    log.info("shutting down", .{});
+    if (self.status != .initialized) return error.InvalidRequest;
+}
+
+fn exitHandler(_: *Server) !void {
+
 }
 
 //test "decode method" {
