@@ -58,8 +58,8 @@ pub fn isBlocking(self: Message) bool {
 }
 
 pub fn jsonParse(
-    allocator: std.mem.Allocator, 
-    source: anytype, 
+    allocator: std.mem.Allocator,
+    source: anytype,
     options: std.json.ParseOptions
 ) std.json.ParseError(@TypeOf(source.*))!Message {
     const json_value = try std.json.parseFromTokenSourceLeaky(std.json.Value, allocator, source, options);
@@ -67,8 +67,8 @@ pub fn jsonParse(
 }
 
 pub fn jsonParseFromValue(
-    allocator: std.mem.Allocator, 
-    source: std.json.Value, 
+    allocator: std.mem.Allocator,
+    source: std.json.Value,
     options: std.json.ParseOptions
 ) !Message {
     if (source != .object) return error.UnexpectedToken;
@@ -135,7 +135,7 @@ pub fn jsonParseFromValue(
                     }
                 };
             }
-        } 
+        }
     } else {
         const method_obj = object.get("method") orelse return error.UnexpectedToken;
         const msg_method = try std.json.parseFromValueLeaky([]const u8, allocator, method_obj, options);

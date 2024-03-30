@@ -97,7 +97,7 @@ pub fn waitAndWork(self: *Server) void {
 }
 
 pub fn loop(self: *Server) !void {
-    while (self.keepRunning()) { 
+    while (self.keepRunning()) {
         const json_message = try self.transport.readJsonMessage(self.allocator);
         defer self.allocator.free(json_message);
         try self.sendJsonMessage(json_message);
@@ -126,9 +126,9 @@ fn sendJsonMessage(self: *Server, json_message: []u8) !void {
     try self.job_queue.ensureUnusedCapacity(1);
 
     const parsed = std.json.parseFromSlice(
-        Message, 
-        self.allocator, 
-        json_message, 
+        Message,
+        self.allocator,
+        json_message,
         .{.ignore_unknown_fields = true, .max_value_len = null}
         ) catch return error.ParseError;
 
@@ -164,7 +164,7 @@ fn sendRequestSync(self: *Server, allocator: std.mem.Allocator, message: Message
             return try self.sendToClientResponse(message.request.?.id, result);
         },
         .shutdown => return try self.shutdownHandler(),
-        .unknown => |msg| { 
+        .unknown => |msg| {
             log.err("Unknown request: {s}", .{msg});
         }
     };

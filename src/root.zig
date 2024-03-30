@@ -23,8 +23,7 @@ pub fn setup_logs(allocator: std.mem.Allocator) !void {
     var logs = try homedir.openDir(logspath, .{});
     defer logs.close();
 
-    const filename = std.fmt.allocPrint(allocator, "{d}.log", 
-        .{ time }) 
+    const filename = std.fmt.allocPrint(allocator, "{d}.log", .{time})
     catch |err| {
         std.debug.print("Failed to format log filename: {}\n", .{err});
         return;
@@ -55,9 +54,9 @@ pub fn log(
         return;
     };
     defer homedir.close();
-    
-    const path = std.fmt.allocPrint(allocator, "{s}/{d}.log", 
-        .{ ".local/share/ruka-ls/logs", time }) 
+
+    const path = std.fmt.allocPrint(allocator, "{s}/{d}.log",
+        .{".local/share/ruka-ls/logs", time})
     catch |err| {
         std.debug.print("Failed to create log file path: {}\n", .{err});
         return;

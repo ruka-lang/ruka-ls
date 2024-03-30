@@ -21,26 +21,26 @@ pub fn init(in: std.io.AnyReader, out: std.io.AnyWriter) Transport {
 
 const Header = struct {
     length: usize,
-    
+
     pub fn parse(allocator: std.mem.Allocator, reader: anytype) !Header {
         var h = Header{
             .length = undefined
-        }; 
+        };
 
         while (true) {
             const header = try reader.readUntilDelimiterAlloc(allocator, '\n', 0x100);
             defer allocator.free(header);
 
-            if (header.len == 0 or header[header.len - 1] != '\r') 
+            if (header.len == 0 or header[header.len - 1] != '\r')
                 return error.MissingCarrigeReturn;
 
             if (header.len == 1) break;
 
             log.info("{s}", .{header});
-            const length = std.fmt.parseUnsigned(usize, header[16..header.len - 1], 10) 
+            const length = std.fmt.parseUnsigned(usize, header[16..header.len - 1], 10)
                 catch return error.CouldNotParseContentLength;
 
-            h.length = length; 
+            h.length = length;
         }
 
         return h;
@@ -51,8 +51,8 @@ pub fn encodeMessage(_: *const Transport, allocator: std.mem.Allocator, msg: any
     const content = try json.stringifyAlloc(allocator, msg, .{});
     defer allocator.free(content);
     const content_length = content.len;
-    
-    const result = try std.fmt.allocPrint(allocator, "Content-Length: {d}\r\n\r\n{s}", 
+
+    const result = try std.fmt.allocPrint(allocator, "Content-Length: {d}\r\n\r\n{s}",
         .{content_length, content});
 
     return result;
