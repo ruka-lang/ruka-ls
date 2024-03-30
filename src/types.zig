@@ -1,4 +1,5 @@
 const std = @import("std");
+const project_options = @import("options");
 
 pub const LspAny = std.json.Value;
 
@@ -23,10 +24,23 @@ pub const ResponseError = struct {
     data: std.json.Value = .null
 };
 
-pub const InitializeParams = struct {};
+pub const InitializeParams = struct {
+
+};
+
 pub const InitializeResult = struct {
     capabilities: ServerCapabilities,
-    serverInfo: ?ServerInfo = null
+    serverInfo: ?ServerInfo = null,
+
+    pub fn init() InitializeResult {
+        return .{
+            .capabilities = .{},
+            .serverInfo = .{
+                .name = project_options.name,
+                .version = project_options.version
+            }
+        };
+    }
 };
 
 pub const ServerCapabilities = struct {
@@ -35,10 +49,12 @@ pub const ServerCapabilities = struct {
 
 pub const ServerInfo = struct {
     name: []const u8,
-    version: ?[]const u8 = null
+    version: ?[]const u8 = null,
 };
 
-pub const InitializedParams = struct {};
+pub const InitializedParams = struct {
+
+};
 
 pub fn UnionParser(comptime T: type) type {
     return struct {

@@ -211,13 +211,7 @@ fn initializeHandler(self: *Server, _: std.mem.Allocator, _: anytype) !types.Ini
 
     defer self.status = .initialized;
 
-    const result = types.InitializeResult{
-        .serverInfo = .{
-            .name = "ruka-ls",
-            .version = "0.0.0"
-        },
-        .capabilities = .{}
-    };
+    const result = types.InitializeResult.init();
 
     return result;
 }

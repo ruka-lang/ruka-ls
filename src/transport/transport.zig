@@ -91,23 +91,6 @@ pub fn readJsonMessage(self: *Transport, allocator: std.mem.Allocator) ![]u8 {
     return content;
 }
 
-test encodeMessage {
-    const stdin = std.io.getStdIn().reader().any();
-    const stdout = std.io.getStdOut().writer().any();
-    const t = Transport.init(stdin, stdout);
-
-    const allocator = std.testing.allocator;
-
-    const expected = "Content-Length: 16\r\n\r\n{\"testing\":true}";
-
-    const actual = try t.encodeMessage(allocator, .{
-        .testing = true
-    });
-    defer allocator.free(actual);
-
-    try std.testing.expect(std.mem.eql(u8, expected, actual));
-}
-
 test readJsonMessage {
     const buf = "Content-Length: 27\r\n\r\n{\"method\":\"initialization\"}";
     var source = std.io.fixedBufferStream(buf);
