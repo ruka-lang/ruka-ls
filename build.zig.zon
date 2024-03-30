@@ -1,6 +1,7 @@
 .{
     .name = "ruka-ls",
     .version = "0.0.0",
+    .minimum_zig_version = "0.12.0",
     .dependencies = .{},
     .paths = .{
         "src",
