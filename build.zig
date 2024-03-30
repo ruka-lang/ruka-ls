@@ -1,5 +1,7 @@
 const std = @import("std");
-const builtin = @import("builtin");
+
+const name = "ruka-ls";
+const version = "0.0.0";
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -23,8 +25,8 @@ pub fn build(b: *std.Build) void {
 
     var options = b.addOptions();
 
-    options.addOption([]const u8, "name", "ruka-ls");
-    options.addOption([]const u8, "version", "0.0.0");
+    options.addOption([]const u8, "name", name);
+    options.addOption([]const u8, "version", version);
 
     exe.root_module.addOptions("options", options);
 
