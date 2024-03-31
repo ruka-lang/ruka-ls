@@ -6,7 +6,7 @@ const types = rukals.types;
 const std = @import("std");
 
 allocator: std.mem.Allocator,
-transport: *Transport,
+transport: Transport,
 status: Status = .uninitialized,
 
 thread_pool: std.Thread.Pool,
@@ -56,7 +56,7 @@ const Job = union(enum) {
     }
 };
 
-pub fn init(allocator: std.mem.Allocator, transport: *Transport) !*Server {
+pub fn init(allocator: std.mem.Allocator, transport: Transport) !*Server {
     const server = try allocator.create(Server);
     errdefer server.deinit();
 
@@ -84,7 +84,7 @@ pub fn deinit(self: *Server) void {
     self.allocator.destroy(self);
 }
 
-pub fn keepRunning(self: *Server) bool {
+pub fn keepRunning(self: Server) bool {
     switch (self.status) {
         .exiting_success, .exiting_failure => return false,
         else => return true

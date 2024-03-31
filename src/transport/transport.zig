@@ -47,17 +47,6 @@ const Header = struct {
     }
 };
 
-pub fn encodeMessage(_: *const Transport, allocator: std.mem.Allocator, msg: anytype) ![]const u8 {
-    const content = try json.stringifyAlloc(allocator, msg, .{});
-    defer allocator.free(content);
-    const content_length = content.len;
-
-    const result = try std.fmt.allocPrint(allocator, "Content-Length: {d}\r\n\r\n{s}",
-        .{content_length, content});
-
-    return result;
-}
-
 pub fn writeJsonMessage(self: *Transport, allocator: std.mem.Allocator, msg: []const u8) !void {
     const prefix = try std.fmt.allocPrint(allocator, "Content-Length: {d}\r\n\r\n", .{msg.len});
     defer allocator.free(prefix);

@@ -27,8 +27,8 @@ pub fn main() !void {
 
     log.info("I'm alive", .{});
 
-    var transport = Transport.init(stdin, stdout);
-    var server = try Server.init(allocator, &transport);
+    const transport = Transport.init(stdin, stdout);
+    var server = try Server.init(allocator, transport);
     defer server.deinit();
 
     try server.loop();
