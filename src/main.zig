@@ -18,7 +18,10 @@ pub fn main() !void {
     const stdin = std.io.getStdIn().reader().any();
     const stdout = std.io.getStdOut().writer().any();
 
-    const allocator = std.heap.page_allocator;
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer log.info("{any}", .{gpa.deinit()});
+
+    const allocator = gpa.allocator();
 
     try rukals.setup_logs(allocator);
 
