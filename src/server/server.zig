@@ -1,7 +1,7 @@
-const ruka_ls = @import("../root.zig");
-const Transport = ruka_ls.Transport;
-const Message = ruka_ls.Message;
-const types = ruka_ls.types;
+const rukals = @import("../root.zig");
+const Transport = rukals.Transport;
+const Message = rukals.Message;
+const types = rukals.types;
 
 const std = @import("std");
 

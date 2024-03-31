@@ -1,6 +1,6 @@
-const ruka_ls = @import("root.zig");
-const Transport = ruka_ls.Transport;
-const Server = ruka_ls.Server;
+const rukals = @import("root.zig");
+const Transport = rukals.Transport;
+const Server = rukals.Server;
 
 const std = @import("std");
 
@@ -11,7 +11,7 @@ pub const std_options = .{
         .Debug => .debug,
         else => .info
     },
-    .logFn = ruka_ls.log
+    .logFn = rukals.log
 };
 
 pub fn main() !void {
@@ -20,7 +20,7 @@ pub fn main() !void {
 
     const allocator = std.heap.page_allocator;
 
-    try ruka_ls.setup_logs(allocator);
+    try rukals.setup_logs(allocator);
 
     log.info("I'm alive", .{});
 

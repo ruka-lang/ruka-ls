@@ -1,5 +1,5 @@
-const ruka_ls = @import("../root.zig");
-const types = ruka_ls.types;
+const rukals = @import("../root.zig");
+const types = rukals.types;
 
 const std = @import("std");
 

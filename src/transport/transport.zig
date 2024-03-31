@@ -1,4 +1,4 @@
-const ruka_ls = @import("../root.zig");
+const rukals = @import("../root.zig");
 
 const std = @import("std");
 const json = std.json;
