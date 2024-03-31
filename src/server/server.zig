@@ -171,7 +171,7 @@ fn sendRequestSync(self: *Server, allocator: std.mem.Allocator, message: Message
 }
 
 fn processMessage(self: *Server, allocator: std.mem.Allocator, message: Message) !void {
-    @setEvalBranchQuota(5_000);
+    //@setEvalBranchQuota(5_000);
     switch (message.tag) {
         .request => {
             switch (message.request.?.params) {

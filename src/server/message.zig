@@ -74,7 +74,7 @@ pub fn jsonParseFromValue(
     if (source != .object) return error.UnexpectedToken;
     const object = source.object;
 
-    @setEvalBranchQuota(10_000);
+    //@setEvalBranchQuota(10_000);
     if (object.get("id")) |id_obj| {
         const msg_id = try std.json.parseFromValueLeaky(types.RequestId, allocator, id_obj, options);
 
