@@ -8,7 +8,7 @@ pub const types = @import("types.zig");
 var time: i64 = undefined;
 
 pub fn setup_logs(allocator: std.mem.Allocator) !void {
-    const home = std.os.getenv("HOME") orelse {
+    const home = std.posix.getenv("HOME") orelse {
         std.debug.print("Failed to read $HOME.\n", .{});
         return;
     };
@@ -44,7 +44,7 @@ pub fn log(
     args: anytype
 ) void {
     const allocator = std.heap.page_allocator;
-    const home = std.os.getenv("HOME") orelse {
+    const home = std.posix.getenv("HOME") orelse {
         std.debug.print("Failed to read $HOME.\n", .{});
         return;
     };
