@@ -109,7 +109,7 @@ pub fn main() !void {
 
     try bw.flush();
 
-    std.os.exit(if (fail == 0) 0 else 1);
+    std.posix.exit(if (fail == 0) 0 else 1);
 }
 
 fn fmt(self: std.io.AnyWriter, comptime format: []const u8, args: anytype) void {
