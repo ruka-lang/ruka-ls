@@ -6,7 +6,7 @@ const std = @import("std");
 
 const log = std.log.scoped(.exe);
 
-pub const std_options = .{
+pub const std_options: std.Options = .{
     .log_level = switch (@import("builtin").mode) {
         .Debug => .debug,
         else => .info
