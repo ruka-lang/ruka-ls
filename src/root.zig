@@ -39,7 +39,7 @@ pub fn setup_logs(allocator: std.mem.Allocator) !void {
 
 pub fn log(
     comptime level: std.log.Level,
-    comptime scope: @Type(.EnumLiteral),
+    comptime scope: @TypeOf(.EnumLiteral),
     comptime format: []const u8,
     args: anytype
 ) void {

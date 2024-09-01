@@ -81,7 +81,10 @@ pub fn jsonParseFromValue(
         if (object.get("method")) |method_obj| {
             const msg_method = try std.json.parseFromValueLeaky([]const u8, allocator, method_obj, options);
             const msg_params = object.get("params") orelse .null;
-            const fields = @typeInfo(Request.Params).Union.fields;
+            const fields = switch (@typeInfo(Request.Params)) {
+                .@"union" => |u| u.fields,
+                else => unreachable
+            };
 
             inline for (fields) |field| {
                 if (std.mem.eql(u8, msg_method, field.name)) {
@@ -140,7 +143,10 @@ pub fn jsonParseFromValue(
         const method_obj = object.get("method") orelse return error.UnexpectedToken;
         const msg_method = try std.json.parseFromValueLeaky([]const u8, allocator, method_obj, options);
         const msg_params = object.get("params") orelse .null;
-        const fields = @typeInfo(Notification).Union.fields;
+        const fields = switch (@typeInfo(Notification)) {
+            .@"union" => |u| u.fields,
+            else => unreachable
+        };
 
         inline for (fields) |field| {
             if (std.mem.eql(u8, msg_method, field.name)) {
